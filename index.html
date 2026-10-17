@@ -1,0 +1,889 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Lịch Xe Hixe</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: sticky toolbar (xe + cọ đánh dấu), tổng kết, rồi lưới lịch từng tháng */
+:root{
+  --bg:#f3f5f6; --surface:#ffffff; --line:#dde3e6; --fg:#16212a; --muted:#5e6b75;
+  --go:#0f6e78; --go-soft:#d3eef0; --home:#b26a12; --home-soft:#f8e6cc;
+  --accent:#0f6e78; --danger:#b3261e;
+  --f-body:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#10171c; --surface:#172129; --line:#2a3741; --fg:#e7eef2; --muted:#93a2ad;
+  --go:#4cc3cf; --go-soft:#123d43; --home:#e9a64d; --home-soft:#46321a;
+  --accent:#4cc3cf; --danger:#f2867e; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#10171c; --surface:#172129; --line:#2a3741; --fg:#e7eef2; --muted:#93a2ad;
+  --go:#4cc3cf; --go-soft:#123d43; --home:#e9a64d; --home-soft:#46321a;
+  --accent:#4cc3cf; --danger:#f2867e; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.45}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px;display:grid;gap:18px}
+header.top{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;justify-content:space-between}
+h1{font-size:24px;margin:0;font-weight:700;letter-spacing:-.01em;text-wrap:balance}
+.sub{color:var(--muted);margin:2px 0 0}
+.sync{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.dot.ok{background:var(--go)} .dot.busy{background:var(--home)}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:8px;padding:7px 12px}
+button:hover{border-color:var(--muted)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--surface);font-weight:600}
+button.ghost{border-color:transparent;background:transparent;color:var(--muted)}
+button.danger{color:var(--danger)}
+input{font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-width:0}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;gap:10px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.cars{display:flex;gap:6px;overflow-x:auto;min-width:0;flex:1}
+.car{white-space:nowrap;display:flex;flex-direction:column;align-items:flex-start;line-height:1.2;padding:6px 12px}
+.car small{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.car[aria-pressed="true"]{border-color:var(--fg);box-shadow:inset 0 0 0 1px var(--fg)}
+.label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.brush{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px;gap:3px}
+.brush button{border:0;border-radius:999px;padding:6px 14px;display:flex;align-items:center;gap:6px;background:transparent}
+.brush button .sw{width:12px;height:12px;border-radius:3px}
+.brush button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.sw.go{background:var(--go)} .sw.home{background:var(--home)} .sw.clear{border:1.5px dashed var(--muted)}
+.spacer{flex:1}
+.hint{font-size:12px;color:var(--muted)}
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+.stat b{display:block;font-family:var(--f-mono);font-size:26px;font-variant-numeric:tabular-nums;line-height:1.1}
+.stat.go b{color:var(--go)} .stat.home b{color:var(--home)}
+.meter{height:8px;border-radius:4px;background:var(--line);overflow:hidden;display:flex;margin-top:8px}
+.meter i{display:block;height:100%}
+.months{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px}
+.month{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:8px;min-width:0}
+.mhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.mhead h3{margin:0;font-size:15px;white-space:nowrap}
+.mstat{font-family:var(--f-mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.mstat .g{color:var(--go)} .mstat .h{color:var(--home)}
+.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;user-select:none;-webkit-user-select:none;touch-action:none}
+.wd{font-size:10px;text-align:center;color:var(--muted);font-weight:600;letter-spacing:.04em}
+.d{aspect-ratio:1/1;max-width:100%;border-radius:7px;border:1px solid var(--line);background:transparent;display:flex;align-items:center;justify-content:center;font-family:var(--f-mono);font-size:13px;font-variant-numeric:tabular-nums;padding:0;color:var(--fg)}
+.d.go{background:var(--go);border-color:var(--go);color:var(--surface)}
+.d.home{background:var(--home-soft);border-color:var(--home);color:var(--home)}
+.d.today{box-shadow:0 0 0 2px var(--fg)}
+.d.future:not(.go):not(.home){border-style:dashed;color:var(--muted)}
+.sect{grid-column:1/-1;display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-top:6px}
+.sect h2{margin:0;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.d.wk:not(.go):not(.home){color:var(--muted)}
+.mfoot{display:flex;gap:6px;flex-wrap:wrap}
+.mfoot button{font-size:12px;padding:4px 8px}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:32px;text-align:center;display:grid;gap:10px;justify-items:center}
+.form{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.form input{flex:1 1 140px}
+.confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:999px;font-size:13px;z-index:20}
+@media (max-width:520px){.months{grid-template-columns:1fr} h1{font-size:20px}}
+@media (prefers-reduced-motion:no-preference){.d{transition:background .12s,border-color .12s}}
+
+/* Tabs + dashboard */
+.tabs{display:inline-flex;border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px;background:var(--surface)}
+.tabs button{border:0;border-radius:7px;padding:7px 16px;background:transparent;font-weight:600;color:var(--muted)}
+.tabs button[aria-selected="true"]{background:var(--fg);color:var(--bg)}
+.dash{display:grid;gap:14px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;gap:10px;min-width:0}
+.panel h2{margin:0;font-size:16px}
+.panel .ph{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.two{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:14px}
+@media (max-width:820px){.two{grid-template-columns:1fr}}
+.stat.cost b{color:var(--fg)}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+td.n,th.n{text-align:right;font-family:var(--f-mono)}
+td.note{white-space:normal;color:var(--muted);min-width:120px}
+tfoot td{font-weight:700;border-bottom:0;border-top:2px solid var(--fg)}
+.g{color:var(--go)} .h{color:var(--home)}
+.chart svg{width:100%;height:auto;display:block}
+.chart text{fill:var(--muted);font-family:var(--f-mono);font-size:11px}
+.chart .val{fill:var(--fg);font-weight:600}
+.exform{display:grid;grid-template-columns:150px minmax(120px,1fr) 150px minmax(120px,1.4fr) auto;gap:8px}
+@media (max-width:820px){.exform{grid-template-columns:1fr 1fr}.exform .wide{grid-column:1/-1}}
+.exform input{width:100%}
+.catbar{display:grid;grid-template-columns:minmax(80px,auto) 1fr auto;gap:6px 10px;align-items:center;font-size:13px}
+.catbar .track{height:8px;background:var(--line);border-radius:4px;overflow:hidden}
+.catbar .track i{display:block;height:100%;background:var(--fg);opacity:.75}
+.catbar .amt{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.del{padding:3px 8px;font-size:12px}
+
+/* Ô có thông tin thuê + ngăn chi tiết ngày */
+.d{position:relative}
+.d.has::after{content:"";position:absolute;top:3px;right:3px;width:6px;height:6px;border-radius:50%;background:var(--home)}
+.d.go.has::after{background:var(--surface)}
+.d.sel{outline:2px solid var(--fg);outline-offset:1px}
+.drawer{position:fixed;z-index:15;background:var(--surface);border:1px solid var(--line);box-shadow:0 12px 40px rgba(0,0,0,.18);display:grid;gap:12px;overflow-y:auto;
+  top:calc(16px + env(safe-area-inset-top,0px));right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));width:360px;border-radius:14px;padding:16px;align-content:start}
+@media (max-width:640px){.drawer{top:auto;left:0;right:0;bottom:0;width:auto;max-height:82vh;border-radius:16px 16px 0 0;
+  padding:16px max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}}
+.drawer h2{margin:0;font-size:18px}
+.dr-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.field{display:grid;gap:4px}
+.field label{font-size:12px;color:var(--muted);font-weight:600}
+.field input{width:100%}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button[aria-pressed="true"].go{background:var(--go);border-color:var(--go);color:var(--surface)}
+.seg button[aria-pressed="true"].home{background:var(--home-soft);border-color:var(--home);color:var(--home)}
+.seg button[aria-pressed="true"].none{background:var(--fg);color:var(--bg)}
+.thumbs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.thumb{position:relative;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--bg)}
+.thumb a{display:block}
+.thumb img{display:block;width:100%;height:110px;object-fit:cover}
+.thumb button{position:absolute;top:4px;right:4px;padding:2px 8px;font-size:12px}
+.upload{border:1.5px dashed var(--line);border-radius:10px;padding:12px;text-align:center;color:var(--muted);cursor:pointer;display:block}
+.upload input{display:none}
+.privacy{font-size:12px;color:var(--muted)}
+.sel{font:inherit;padding:7px 8px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--fg);min-width:0;max-width:100%}
+@media (min-width:1000px){body.dr-open .wrap{margin-right:380px}}
+.stat.rev b{color:var(--go)}
+.rentals td{white-space:nowrap}
+
+/* Báo cáo PDF — luôn nền sáng, dựng ngoài màn hình */
+#report table{font-size:15px} #report th,#report td{padding:8px 10px;border-bottom:1px solid #dde3e6;color:#16212a}
+#report th{color:#5e6b75;font-size:12px} #report tfoot td{border-top:2px solid #16212a}
+#report .blk{padding:16px 32px}
+#report .big{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+#report .bw{text-align:center;font-size:13px;font-weight:600;color:#5e6b75}
+#report .bc{height:96px;border:1px solid #dde3e6;border-radius:8px;padding:6px 8px;display:flex;flex-direction:column;gap:2px;overflow:hidden}
+#report .bc .bd{font-family:var(--f-mono);font-size:15px;font-weight:600}
+#report .bc .bn{font-size:13px;line-height:1.2;font-weight:600}
+#report .bc .bp{font-family:var(--f-mono);font-size:12px}
+#report .bc.go{background:#0f6e78;border-color:#0f6e78;color:#fff}
+#report .bc.home{background:#f8e6cc;border-color:#b26a12;color:#8a500b}
+#report .bc.nx{border-style:dashed;color:#9aa6ae}
+#report .bc.fx{color:#9aa6ae}
+#report .bc.bl{border:0} #report .blk h3{margin:0 0 8px;font-size:19px}
+#report{position:fixed;left:-20000px;top:0;width:1000px;background:#fff;color:#16212a;font-family:var(--f-body)}
+#report .rh{padding:28px 32px 16px;border-bottom:2px solid #16212a}
+#report .rh h2{margin:0;font-size:28px}
+#report .rh p{margin:4px 0 0;color:#5e6b75;font-size:15px}
+#report .rs{display:flex;gap:28px;padding:16px 32px;font-size:15px}
+#report .rs{flex-wrap:wrap}
+#report .rs b{font-family:var(--f-mono);font-size:26px;display:block;white-space:nowrap}
+#report .rm{width:300px;padding:14px;border:1px solid #c9d1d6;border-radius:10px;background:#fff}
+#report .rm h4{margin:0 0 4px;font-size:17px}
+#report .rm .ms{font-family:var(--f-mono);font-size:13px;color:#5e6b75;margin-bottom:8px}
+#report .rg{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+#report .rg span{height:34px;border-radius:5px;border:1px solid #dde3e6;display:flex;align-items:center;justify-content:center;font-family:var(--f-mono);font-size:13px}
+#report .rg .w{border:0;height:18px;font-size:11px;color:#5e6b75;font-family:var(--f-body);font-weight:600}
+#report .rg .go{background:#0f6e78;border-color:#0f6e78;color:#fff}
+#report .rg .home{background:#f8e6cc;border-color:#b26a12;color:#8a500b}
+#report .rg .nx{border-style:dashed;color:#9aa6ae}
+#report .rg .bl{border:0}
+#report .lg{display:flex;gap:18px;padding:0 32px 14px;font-size:14px;color:#5e6b75}
+#report .lg i{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:6px}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Lịch xe đi / ở nhà</h1>
+      <p class="sub" id="range">Từ 01/02/2026 đến hôm nay</p>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Chế độ xem">
+      <button role="tab" id="tabCal" aria-selected="true">Lịch</button>
+      <button role="tab" id="tabDash" aria-selected="false">Dashboard</button>
+    </div>
+    <div class="sync"><span class="dot" id="syncDot"></span><span id="syncText">Đang kết nối…</span></div>
+  </header>
+
+  <div class="bar">
+    <div class="row">
+      <div class="cars" id="cars" role="group" aria-label="Chọn xe"></div>
+      <button id="addCarBtn">+ Thêm xe</button>
+    </div>
+    <div class="row" id="addCarForm" hidden>
+      <div class="form" style="flex:1">
+        <input id="carName" placeholder="Tên xe (vd: VinFast VF5)" aria-label="Tên xe">
+        <input id="carPlate" placeholder="Biển số (vd: 30K-123.45)" aria-label="Biển số">
+        <button class="primary" id="saveCar">Lưu xe</button>
+        <button class="ghost" id="cancelCar">Huỷ</button>
+      </div>
+    </div>
+    <div class="row">
+      <span class="label" data-cal>Đánh dấu</span>
+      <div class="brush" data-cal role="group" aria-label="Chọn kiểu đánh dấu">
+        <button data-b="go" aria-pressed="true"><span class="sw go"></span>Xe đi</button>
+        <button data-b="home" aria-pressed="false"><span class="sw home"></span>Ở nhà</button>
+        <button data-b="clear" aria-pressed="false"><span class="sw clear"></span>Xoá</button>
+      </div>
+      <span class="hint" data-cal>Chạm 1 lần để đánh dấu và mở ô điền giá, người thuê. Chạm nhanh 2 lần để bỏ chọn. Giữ và kéo để tô nhiều ngày.</span>
+      <span class="hint" data-dash hidden>Số ngày lấy từ lịch đã tích. Thêm khoản chi ở bên dưới.</span>
+      <span class="spacer"></span>
+      <button id="carMenuBtn" class="ghost">Sửa / xoá xe</button>
+      <button class="primary" id="pdfBtn">Xuất PDF</button>
+    </div>
+    <div class="row" id="exportPanel" hidden>
+      <div class="form" style="flex:1">
+        <span class="label">Xuất PDF</span>
+        <label class="hint" for="pxCar">Xe</label><select id="pxCar" class="sel"></select>
+        <label class="hint" for="pxRange">Kỳ</label><select id="pxRange" class="sel"></select>
+        <button class="primary" id="pxGo">Tạo PDF</button>
+        <button class="ghost" id="pxCancel">Đóng</button>
+      </div>
+    </div>
+    <div class="row" id="carEdit" hidden>
+      <div class="form" style="flex:1">
+        <input id="editName" aria-label="Sửa tên xe">
+        <input id="editPlate" aria-label="Sửa biển số">
+        <button class="primary" id="saveEdit">Lưu</button>
+        <button class="danger" id="delCar">Xoá xe này</button>
+        <button class="ghost" id="closeEdit">Đóng</button>
+      </div>
+      <div class="confirm" id="delConfirm" hidden>
+        <span>Xoá xe và toàn bộ lịch đã đánh dấu? Không thể hoàn tác.</span>
+        <button class="danger" id="delYes">Xoá hẳn</button>
+        <button class="ghost" id="delNo">Giữ lại</button>
+      </div>
+    </div>
+  </div>
+
+  <section class="summary" id="summary" aria-live="polite"></section>
+  <section class="months" id="months" data-cal></section>
+
+  <section class="dash" id="dash" data-dash hidden>
+    <div class="two">
+      <div class="panel">
+        <div class="ph"><h2>Ngày xe đi theo tháng</h2><span class="hint"><span class="g">■</span> đi · <span class="h">■</span> ở nhà</span></div>
+        <div class="chart" id="chart"></div>
+      </div>
+      <div class="panel">
+        <div class="ph"><h2>Chi phí theo hạng mục</h2><span class="hint" id="catTotal"></span></div>
+        <div class="catbar" id="cats"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Tổng hợp theo tháng</h2>
+      <div class="tbl-wrap"><table id="monthTbl"></table></div>
+    </div>
+    <div class="panel">
+      <div class="ph"><h2>Khoản chi</h2><span class="hint">Nhập từng khoản, tổng tự cộng.</span></div>
+      <form class="exform" id="exForm">
+        <input type="date" id="exDate" aria-label="Ngày chi" min="2026-02-01" required>
+        <input id="exCat" list="catList" placeholder="Hạng mục (vd: Xăng)" aria-label="Hạng mục" required>
+        <input id="exAmt" inputmode="numeric" placeholder="Số tiền (đ)" aria-label="Số tiền" required>
+        <input id="exNote" class="wide" placeholder="Ghi chú (không bắt buộc)" aria-label="Ghi chú">
+        <button class="primary wide" type="submit">Thêm khoản chi</button>
+      </form>
+      <datalist id="catList"><option>Xăng</option><option>Sạc điện</option><option>Rửa xe</option><option>Bảo dưỡng</option><option>Sửa chữa</option><option>Gửi xe</option><option>Phí đường bộ / BOT</option><option>Bảo hiểm</option><option>Đăng kiểm</option><option>Phạt nguội</option><option>Khác</option></datalist>
+      <div class="row"><label class="label" for="exFilter">Lọc tháng</label><select id="exFilter" style="font:inherit;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--fg)"></select></div>
+      <div class="tbl-wrap"><table id="exTbl"></table></div>
+    </div>
+    <div class="panel">
+      <div class="ph"><h2>Lượt thuê</h2><span class="hint" id="rtHint">Ngày xe đi có điền giá hoặc người thuê. Bấm một dòng để mở ngày đó.</span></div>
+      <div class="tbl-wrap"><table id="rtTbl" class="rentals"></table></div>
+    </div>
+    <div class="panel" id="allCarsPanel" hidden>
+      <h2>So sánh các xe</h2>
+      <div class="tbl-wrap"><table id="carsTbl"></table></div>
+    </div>
+  </section>
+</div>
+
+<div id="report" aria-hidden="true"></div>
+<aside class="drawer" id="drawer" hidden aria-label="Chi tiết ngày">
+  <div class="dr-head">
+    <div><span class="label" id="drCar"></span><h2 id="drTitle">Ngày</h2></div>
+    <button class="ghost" id="drClose" aria-label="Đóng">Đóng ✕</button>
+  </div>
+  <div class="seg" role="group" aria-label="Trạng thái ngày">
+    <button class="go" data-st="go">Xe đi</button><button class="home" data-st="home">Ở nhà</button><button class="none" data-st="">Chưa tích</button>
+  </div>
+  <p class="hint" style="margin:0">Các mục dưới đây không bắt buộc, điền mục nào lưu mục đó.</p>
+  <div class="field"><label for="drPrice">Giá xe (đ)</label><input id="drPrice" inputmode="numeric" placeholder="vd: 800.000"></div>
+  <div class="field"><label for="drName">Tên người thuê</label><input id="drName" placeholder="vd: Nguyễn Văn A" autocomplete="off"></div>
+  <div class="field"><label for="drPhone">Số điện thoại</label><input id="drPhone" type="tel" inputmode="tel" placeholder="vd: 0912 345 678" autocomplete="off"></div>
+  <div class="field"><label>Ảnh CCCD</label>
+    <div class="thumbs" id="drThumbs"></div>
+    <label class="upload" id="drUpload"><input type="file" id="drFile" accept="image/*" multiple>+ Thêm ảnh CCCD (mặt trước / sau)</label>
+    <span class="privacy" id="drUpNote">Ảnh chỉ những người bạn chia sẻ trang mới xem được.</span>
+  </div>
+  <button id="drRun">Áp dụng giá + người thuê cho cả chuỗi ngày đi liền nhau</button>
+  <button class="danger ghost" id="drClear">Xoá thông tin ngày này</button>
+</aside>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+(function(){
+"use strict";
+const START = {y:2026, m:1}; // tháng 2 (0-based)
+const MONTHS = ["Tháng 1","Tháng 2","Tháng 3","Tháng 4","Tháng 5","Tháng 6","Tháng 7","Tháng 8","Tháng 9","Tháng 10","Tháng 11","Tháng 12"];
+const WD = ["T2","T3","T4","T5","T6","T7","CN"];
+const pad = n => String(n).padStart(2,"0");
+const key = (y,m,d) => `${y}-${pad(m+1)}-${pad(d)}`;
+const now = new Date();
+const TODAY = key(now.getFullYear(), now.getMonth(), now.getDate());
+const LS = "hixe-lich-xe-v1";
+
+let cars = [];         // {id,name,plate,marks:{}}
+let currentId = null;
+let brush = "go";
+let db = null;
+const dirty = new Set(); let saveTimer = null;
+
+const $ = id => document.getElementById(id);
+function toast(t){const el=$("toast");el.textContent=t;el.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>el.hidden=true,2600)}
+function setSync(state, text){ $("syncDot").className = "dot " + (state||""); $("syncText").textContent = text; }
+
+let FUT = 6; try{ FUT = Math.max(1, Math.min(36, Number(localStorage.getItem(LS+"-fut"))||6)); }catch(e){}
+function lastMonth(){
+  let t = now.getFullYear()*12 + now.getMonth() + FUT;
+  for(const c of cars){ for(const k of Object.keys(c.marks||{}).concat(Object.keys(c.info||{}))){ const [yy,mm]=k.split("-").map(Number); if(yy) t=Math.max(t, yy*12+mm-1); } }
+  return t;
+}
+function monthList(){
+  const out=[]; const end=lastMonth(); let y=START.y, m=START.m;
+  while (y*12+m <= end){ out.push({y,m}); m++; if(m>11){m=0;y++;} }
+  return out;
+}
+function daysIn(y,m){ return new Date(y,m+1,0).getDate(); }
+function car(){ return cars.find(c=>c.id===currentId) || null; }
+
+function stats(c, y, m){
+  let go=0, home=0, total=0, fgo=0;
+  const list = (y==null) ? monthList() : [{y,m}];
+  for (const mm of list){
+    const n = daysIn(mm.y, mm.m);
+    for (let d=1; d<=n; d++){
+      const k = key(mm.y,mm.m,d); const v = c.marks[k];
+      if (k > TODAY){ if(v==="go") fgo++; continue; }
+      total++; if (v==="go") go++; else if (v==="home") home++;
+    }
+  }
+  return {go, home, total, none: total-go-home, fgo, all: go+fgo};
+}
+
+/* ---------- Chi phí ---------- */
+const vnd = n => new Intl.NumberFormat("vi-VN").format(Math.round(n||0)) + " đ";
+const ym = (y,m) => `${y}-${pad(m+1)}`;
+function costOf(c, y, m){
+  const p = (y==null) ? null : ym(y,m);
+  return (c.expenses||[]).reduce((s,e)=> (!p || String(e.date).startsWith(p)) ? s+(Number(e.amount)||0) : s, 0);
+}
+let view = "cal";
+function setView(v){
+  view=v;
+  $("tabCal").setAttribute("aria-selected", v==="cal"); $("tabDash").setAttribute("aria-selected", v==="dash");
+  document.querySelectorAll("[data-cal]").forEach(el=>el.hidden = v!=="cal");
+  document.querySelectorAll("[data-dash]").forEach(el=>el.hidden = v!=="dash" || !car());
+  if(v==="dash") renderDash();
+}
+$("tabCal").onclick=()=>setView("cal");
+$("tabDash").onclick=()=>setView("dash");
+
+function renderDash(){
+  const c=car(); if(view!=="dash") return;
+  document.querySelectorAll("[data-dash]").forEach(el=>el.hidden = !c);
+  if(!c) return;
+  const months=monthList();
+  // Biểu đồ cột: ngày đi (đậm) + ở nhà (nhạt) xếp chồng
+  const Wd=640, Hd=220, pl=28, pb=26, pt=18, bw=(Wd-pl-10)/months.length;
+  const maxD=31; const yS=v=>Hd-pb-(v/maxD)*(Hd-pb-pt);
+  let svg=`<svg viewBox="0 0 ${Wd} ${Hd}" role="img" aria-label="Biểu đồ số ngày xe đi theo tháng">`;
+  [0,10,20,30].forEach(t=>{ svg+=`<line x1="${pl}" x2="${Wd-6}" y1="${yS(t)}" y2="${yS(t)}" stroke="var(--line)"/><text x="${pl-6}" y="${yS(t)+4}" text-anchor="end">${t}</text>`; });
+  months.forEach(({y,m},i)=>{
+    const s=stats(c,y,m); const x=pl+i*bw+bw*0.18, w=bw*0.64;
+    const yGo=yS(s.all), yHome=yS(s.all+s.home);
+    svg+=`<rect x="${x}" y="${yHome}" width="${w}" height="${yGo-yHome}" fill="var(--home-soft)" stroke="var(--home)" stroke-width="1"/>`;
+    svg+=`<rect x="${x}" y="${yGo}" width="${w}" height="${Hd-pb-yGo}" fill="var(--go)"/>`;
+    if(s.all) svg+=`<text class="val" x="${x+w/2}" y="${yHome-5}" text-anchor="middle">${s.all}</text>`;
+    svg+=`<text x="${x+w/2}" y="${Hd-8}" text-anchor="middle">${m===0?"1/"+String(y).slice(2):"T"+(m+1)}</text>`;
+  });
+  $("chart").innerHTML=svg+"</svg>";
+
+  // Hạng mục
+  const cats={}; (c.expenses||[]).forEach(e=>{ const k=e.cat||"Khác"; cats[k]=(cats[k]||0)+(Number(e.amount)||0); });
+  const total=costOf(c); const ent=Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+  $("catTotal").textContent = "Tổng " + vnd(total);
+  const ce=$("cats"); ce.textContent="";
+  if(!ent.length){ ce.innerHTML=`<span class="hint" style="grid-column:1/-1">Chưa có khoản chi nào. Thêm ở mục “Khoản chi” bên dưới.</span>`; }
+  ent.forEach(([k,v])=>{
+    const a=document.createElement("span"); a.textContent=k;
+    const t=document.createElement("span"); t.className="track"; t.innerHTML=`<i style="width:${total? v/total*100:0}%"></i>`;
+    const b=document.createElement("span"); b.className="amt"; b.textContent=vnd(v);
+    ce.append(a,t,b);
+  });
+
+  // Bảng theo tháng
+  let rows="", tg=0, th=0, tn=0;
+  months.slice().reverse().forEach(({y,m})=>{ const s=stats(c,y,m), k=costOf(c,y,m); tg+=s.all; th+=s.home; tn+=s.none;
+    rows+=`<tr><td>${MONTHS[m]}/${y}</td><td class="n g">${s.all}</td><td class="n h">${s.home}</td><td class="n">${s.none}</td><td class="n g">${vnd(revOf(c,y,m))}</td><td class="n">${vnd(k)}</td><td class="n">${vnd(revOf(c,y,m)-k)}</td></tr>`; });
+  $("monthTbl").innerHTML=`<thead><tr><th>Tháng</th><th class="n">Ngày đi</th><th class="n">Ở nhà</th><th class="n">Chưa tích</th><th class="n">Doanh thu</th><th class="n">Chi phí</th><th class="n">Lãi</th></tr></thead><tbody>${rows}</tbody>
+    <tfoot><tr><td>Tổng</td><td class="n g">${tg}</td><td class="n h">${th}</td><td class="n">${tn}</td><td class="n g">${vnd(revOf(c))}</td><td class="n">${vnd(total)}</td><td class="n">${vnd(revOf(c)-total)}</td></tr></tfoot>`;
+
+  // Lọc + danh sách khoản chi
+  const f=$("exFilter"); const prev=f.value;
+  f.innerHTML=`<option value="">Tất cả các tháng</option>`+months.slice().reverse().map(({y,m})=>`<option value="${ym(y,m)}">${MONTHS[m]}/${y}</option>`).join("");
+  f.value=prev||"";
+  const list=(c.expenses||[]).filter(e=>!f.value || String(e.date).startsWith(f.value)).sort((a,b)=> String(b.date).localeCompare(String(a.date)));
+  const sum=list.reduce((s,e)=>s+(Number(e.amount)||0),0);
+  const tb=$("exTbl"); tb.textContent="";
+  tb.innerHTML=`<thead><tr><th>Ngày</th><th>Hạng mục</th><th class="n">Số tiền</th><th>Ghi chú</th><th></th></tr></thead>`;
+  const body=document.createElement("tbody");
+  if(!list.length){ body.innerHTML=`<tr><td colspan="5" class="hint">Chưa có khoản chi${f.value?" trong tháng này":""}.</td></tr>`; }
+  list.forEach(e=>{
+    const tr=document.createElement("tr");
+    const td=(t,cls)=>{const x=document.createElement("td"); if(cls) x.className=cls; x.textContent=t; return x;};
+    tr.append(td(String(e.date).split("-").reverse().join("/")), td(e.cat||"Khác"), td(vnd(e.amount),"n"), td(e.note||"","note"));
+    const act=document.createElement("td"); const del=document.createElement("button"); del.className="del ghost"; del.textContent="Xoá";
+    del.onclick=()=>{ if(del.dataset.arm){ c.expenses=c.expenses.filter(x=>x.id!==e.id); changed(c); toast("Đã xoá khoản chi"); }
+      else { del.dataset.arm=1; del.textContent="Chắc chắn?"; del.classList.add("danger"); setTimeout(()=>{ if(del.isConnected){ delete del.dataset.arm; del.textContent="Xoá"; del.classList.remove("danger"); } },3000); } };
+    act.appendChild(del); tr.appendChild(act); body.appendChild(tr);
+  });
+  tb.appendChild(body);
+  tb.insertAdjacentHTML("beforeend", `<tfoot><tr><td colspan="2">Tổng ${f.value?"tháng":"cả kỳ"} (${list.length} khoản)</td><td class="n">${vnd(sum)}</td><td colspan="2"></td></tr></tfoot>`);
+
+  renderRentals(c);
+  // So sánh xe
+  $("allCarsPanel").hidden = cars.length<2;
+  if(cars.length>=2){
+    $("carsTbl").innerHTML=`<thead><tr><th>Xe</th><th class="n">Ngày đi</th><th class="n">Ở nhà</th><th class="n">Doanh thu</th><th class="n">Chi phí</th></tr></thead><tbody>`+
+      cars.map(x=>{const s=stats(x); return `<tr><td>${esc(x.name||"—")} <span class="hint">${esc(x.plate||"")}</span></td><td class="n g">${s.go}</td><td class="n h">${s.home}</td><td class="n g">${vnd(revOf(x))}</td><td class="n">${vnd(costOf(x))}</td></tr>`;}).join("")+`</tbody>`;
+  }
+}
+$("exFilter").onchange=renderDash;
+function rentalRows(c){
+  return Object.keys(c.marks).filter(k=>c.marks[k]==="go").sort().reverse().map(k=>({k, i:getInfo(c,k)}));
+}
+function renderRentals(c){
+  const rows=rentalRows(c); const t=$("rtTbl"); t.textContent="";
+  t.innerHTML=`<thead><tr><th>Ngày</th><th class="n">Giá xe</th><th>Người thuê</th><th>SĐT</th><th>CCCD</th></tr></thead>`;
+  const body=document.createElement("tbody");
+  if(!rows.length) body.innerHTML=`<tr><td colspan="5" class="hint">Chưa có ngày xe đi nào.</td></tr>`;
+  rows.forEach(({k,i})=>{
+    const tr=document.createElement("tr"); tr.style.cursor="pointer"; tr.tabIndex=0;
+    const td=(t,cls)=>{const x=document.createElement("td"); if(cls) x.className=cls; x.textContent=t; return x;};
+    tr.append(td(k.split("-").reverse().join("/")), td(i.price? vnd(i.price):"—","n"), td(i.name||"—"), td(i.phone||"—"), td(i.ids&&i.ids.length? i.ids.length+" ảnh":"—"));
+    const go=()=>{ setView("cal"); openDay(k); const b=document.querySelector(`.d[data-k="${k}"]`); if(b) b.scrollIntoView({block:"center"}); };
+    tr.onclick=go; tr.onkeydown=e=>{ if(e.key==="Enter") go(); };
+    body.appendChild(tr);
+  });
+  t.appendChild(body);
+  const sum=rows.reduce((a,r)=>a+(Number(r.i.price)||0),0);
+  t.insertAdjacentHTML("beforeend",`<tfoot><tr><td>${rows.length} ngày đi</td><td class="n">${vnd(sum)}</td><td colspan="3"></td></tr></tfoot>`);
+}
+$("exAmt").addEventListener("input", e=>{ const d=e.target.value.replace(/\D/g,""); e.target.value = d? new Intl.NumberFormat("vi-VN").format(Number(d)) : ""; });
+$("exForm").addEventListener("submit", e=>{
+  e.preventDefault(); const c=car(); if(!c) return;
+  const date=$("exDate").value, cat=$("exCat").value.trim(), amount=Number($("exAmt").value.replace(/\D/g,""));
+  if(!date){ toast("Chọn ngày chi"); return; }
+  if(date<"2026-02-01"||date>TODAY){ toast("Ngày chi phải từ 01/02/2026 đến hôm nay"); return; }
+  if(!amount){ toast("Nhập số tiền lớn hơn 0"); return; }
+  c.expenses=(c.expenses||[]).concat([{id:"e"+Date.now().toString(36)+Math.random().toString(36).slice(2,5), date, cat:cat||"Khác", amount, note:$("exNote").value.trim()}]);
+  $("exAmt").value=""; $("exNote").value=""; $("exCat").focus();
+  changed(c); toast("Đã thêm "+vnd(amount));
+});
+$("exDate").value=TODAY; $("exDate").max=TODAY;
+
+/* ---------- Render ---------- */
+function renderCars(){
+  const el = $("cars"); el.textContent="";
+  cars.forEach(c=>{
+    const b=document.createElement("button"); b.className="car"; b.setAttribute("aria-pressed", c.id===currentId);
+    const s=document.createElement("span"); s.textContent=c.name||"Xe chưa đặt tên";
+    const p=document.createElement("small"); p.textContent=c.plate||"—";
+    b.append(s,p); b.onclick=()=>{ currentId=c.id; closeEdit(); closeDay(); renderAll(); };
+    el.appendChild(b);
+  });
+  $("carMenuBtn").hidden = !car(); $("pdfBtn").disabled = !car();
+}
+function renderSummary(){
+  const el=$("summary"); const c=car(); el.textContent="";
+  if(!c) return;
+  const s=stats(c); const pct = v => s.total? (v/s.total*100):0;
+  el.innerHTML = `
+    <div class="stat go"><span class="label">Ngày xe đi</span><b>${s.go}</b>${s.fgo?`<span class="hint">+ ${s.fgo} ngày đã đặt sắp tới</span>`:""}</div>
+    <div class="stat home"><span class="label">Ngày ở nhà</span><b>${s.home}</b></div>
+    <div class="stat"><span class="label">Chưa đánh dấu</span><b>${s.none}</b></div>
+    <div class="stat"><span class="label">Tỉ lệ xe chạy</span><b>${s.go+s.home? Math.round(s.go/(s.go+s.home)*100):0}%</b>
+      <div class="meter"><i style="width:${pct(s.go)}%;background:var(--go)"></i><i style="width:${pct(s.home)}%;background:var(--home)"></i></div></div>
+    <div class="stat rev"><span class="label">Doanh thu (giá xe)</span><b style="font-size:20px">${vnd(revOf(c))}</b><span class="hint">Lãi sau chi phí: ${vnd(revOf(c)-costOf(c))}</span></div>
+    <div class="stat cost"><span class="label">Tổng chi phí</span><b style="font-size:20px">${vnd(costOf(c))}</b><span class="hint">${(c.expenses||[]).length} khoản · ${s.go? vnd(costOf(c)/s.go)+" / ngày đi":"—"}</span></div>`;
+}
+function renderMonths(){
+  const el=$("months"); el.textContent=""; const c=car();
+  if(!c){
+    el.innerHTML = `<div class="empty" style="grid-column:1/-1"><b>Chưa có xe nào</b><span class="hint">Bấm “+ Thêm xe” để tạo xe đầu tiên, rồi tích ngày xe đi và ngày xe ở nhà từ tháng 2/2026.</span></div>`;
+    return;
+  }
+  const all=monthList(); const curIdx=all.findIndex(x=>x.y===now.getFullYear()&&x.m===now.getMonth());
+  const upcoming=all.slice(curIdx), past=all.slice(0,curIdx).reverse();
+  const sect=(t,btn)=>{ const h=document.createElement("div"); h.className="sect"; const x=document.createElement("h2"); x.textContent=t; h.appendChild(x); if(btn) h.appendChild(btn); el.appendChild(h); };
+  const more=document.createElement("button"); more.textContent="+ Thêm 6 tháng";
+  more.onclick=()=>{ FUT=Math.min(36,FUT+6); try{localStorage.setItem(LS+"-fut",FUT)}catch(e){} renderAll(); };
+  const order=[["Tháng này và sắp tới",upcoming,more],["Đã qua",past,null]];
+  order.forEach(([title,list,btn])=>{ if(!list.length) return; sect(title,btn); list.forEach(({y,m})=>{
+    const box=document.createElement("article"); box.className="month";
+    const s=stats(c,y,m);
+    box.innerHTML = `<div class="mhead"><h3>${MONTHS[m]}/${y}</h3><span class="mstat"><span class="g">${s.all} đi${s.fgo&&s.go?` (${s.fgo} đã đặt)`:s.fgo?" (đã đặt)":""}</span> · <span class="h">${s.home} nhà</span>${s.total?` · ${s.none} trống`:""}</span></div>`;
+    const g=document.createElement("div"); g.className="grid";
+    WD.forEach(w=>{const h=document.createElement("div");h.className="wd";h.textContent=w;g.appendChild(h)});
+    const first=(new Date(y,m,1).getDay()+6)%7;
+    for(let i=0;i<first;i++) g.appendChild(document.createElement("div"));
+    const n=daysIn(y,m);
+    for(let d=1; d<=n; d++){
+      const k=key(y,m,d); const b=document.createElement("button");
+      const dow=(first+d-1)%7;
+      b.className="d"+(c.marks[k]?" "+c.marks[k]:"")+(k===TODAY?" today":"")+(k>TODAY?" future":"")+(dow>=5?" wk":"")+(hasInfo(c,k)?" has":"")+(k===openKey?" sel":"");
+      b.textContent=d; b.dataset.k=k;
+      b.setAttribute("aria-label", `${d}/${m+1}/${y}: ${c.marks[k]==="go"?"xe đi":c.marks[k]==="home"?"ở nhà":"chưa đánh dấu"}`);
+      g.appendChild(b);
+    }
+    box.appendChild(g);
+    const f=document.createElement("div"); f.className="mfoot";
+    const fill=document.createElement("button"); fill.textContent="Ngày trống → Ở nhà";
+    fill.onclick=()=>{ for(let d=1;d<=n;d++){const k=key(y,m,d); if(k>TODAY)break; if(!c.marks[k]) c.marks[k]="home";} changed(c); };
+    const clr=document.createElement("button"); clr.className="ghost"; clr.textContent="Xoá tháng";
+    clr.onclick=()=>{ if(clr.dataset.arm){ for(let d=1;d<=n;d++) delete c.marks[key(y,m,d)]; changed(c);} else {clr.dataset.arm=1; clr.textContent="Bấm lần nữa để xoá"; clr.classList.add("danger"); setTimeout(()=>{if(clr.isConnected){delete clr.dataset.arm;clr.textContent="Xoá tháng";clr.classList.remove("danger")}},3000);} };
+    if(!s.total) fill.hidden=true;
+    f.append(fill,clr); box.appendChild(f);
+    el.appendChild(box);
+  }); });
+}
+function renderAll(){ renderCars(); renderSummary(); renderMonths(); setView(view); if(openKey && car()) fillDrawer(); else if(openKey) closeDay(); }
+
+/* ---------- Painting (click + drag) ---------- */
+let painting=false, paintVal=null, touched=new Set();
+function applyTo(btn){
+  const c=car(); if(!c||!btn||btn.disabled||!btn.dataset.k) return;
+  const k=btn.dataset.k; if(touched.has(k)) return; touched.add(k);
+  if(paintVal===null) delete c.marks[k]; else c.marks[k]=paintVal;
+  btn.classList.remove("go","home"); if(paintVal) btn.classList.add(paintVal);
+}
+$("months").addEventListener("pointerdown", e=>{
+  const btn=e.target.closest(".d"); if(!btn||btn.disabled) return;
+  e.preventDefault(); const c=car(); const cur=c.marks[btn.dataset.k];
+  // Chạm 2 lần nhanh vào cùng một ô = bỏ chọn
+  const tNow=Date.now();
+  if(lastTap && lastTap.k===btn.dataset.k && tNow-lastTap.t<450){
+    lastTap=null; delete c.marks[btn.dataset.k]; btn.classList.remove("go","home");
+    closeDay(); changed(c); toast("Đã bỏ chọn ngày "+btn.dataset.k.split("-").reverse().join("/")); return;
+  }
+  paintVal = brush==="clear" ? null : brush;
+  firstCur = cur; painting=true; touched=new Set(); applyTo(btn);
+});
+let firstCur, lastTap=null;
+window.addEventListener("pointermove", e=>{
+  if(!painting) return;
+  const el=document.elementFromPoint(e.clientX,e.clientY); const btn=el&&el.closest&&el.closest(".d"); if(btn) applyTo(btn);
+});
+function endPaint(){ if(!painting) return; painting=false;
+  const one = touched.size===1 ? [...touched][0] : null;
+  lastTap = one ? {k:one, t:Date.now()} : null;
+  if(touched.size) changed(car());
+  if(one && brush!=="clear") openDay(one); else if(touched.size>1) closeDay();
+}
+window.addEventListener("pointerup", endPaint); window.addEventListener("pointercancel", endPaint);
+$("months").addEventListener("keydown", e=>{
+  if((e.key==="Enter"||e.key===" ") && e.target.classList.contains("d")){ e.preventDefault();
+    const c=car(); paintVal = brush==="clear"?null:brush;
+    touched=new Set(); applyTo(e.target); changed(c); if(brush!=="clear") openDay(e.target.dataset.k); }
+});
+
+/* ---------- Chi tiết ngày (giá, người thuê, SĐT, CCCD) ---------- */
+let openKey=null, assets=null;
+function hasInfo(c,k){ const i=c.info&&c.info[k]; return !!(i && (i.price||i.name||i.phone||(i.ids&&i.ids.length))); }
+function getInfo(c,k){ c.info=c.info||{}; return c.info[k] || {}; }
+function putInfo(c,k,patch){
+  const cur=Object.assign({}, getInfo(c,k), patch);
+  if(!cur.price) delete cur.price; if(!cur.name) delete cur.name; if(!cur.phone) delete cur.phone; if(!cur.ids||!cur.ids.length) delete cur.ids;
+  c.info=Object.assign({}, c.info); if(Object.keys(cur).length) c.info[k]=cur; else delete c.info[k];
+}
+const fmtNum = n => n? new Intl.NumberFormat("vi-VN").format(n) : "";
+function openDay(k){
+  const c=car(); if(!c) return; openKey=k;
+  const [y,m,d]=k.split("-"); const dow=["Chủ nhật","Thứ 2","Thứ 3","Thứ 4","Thứ 5","Thứ 6","Thứ 7"][new Date(+y,+m-1,+d).getDay()];
+  $("drTitle").textContent=`${dow}, ${d}/${m}/${y}`; $("drCar").textContent=(c.name||"")+(c.plate?" · "+c.plate:"");
+  const i=getInfo(c,k);
+  $("drPrice").value=fmtNum(i.price); $("drName").value=i.name||""; $("drPhone").value=i.phone||"";
+  fillDrawer(); $("drawer").hidden=false; document.body.classList.add("dr-open");
+  document.querySelectorAll(".d.sel").forEach(x=>x.classList.remove("sel"));
+  const b=document.querySelector(`.d[data-k="${k}"]`); if(b) b.classList.add("sel");
+}
+function fillDrawer(){
+  const c=car(); if(!c||!openKey) return; const i=getInfo(c,openKey);
+  document.querySelectorAll(".seg button").forEach(b=>b.setAttribute("aria-pressed", (c.marks[openKey]||"")===b.dataset.st));
+  const th=$("drThumbs"); th.textContent="";
+  (i.ids||[]).forEach(id=>{
+    const w=document.createElement("div"); w.className="thumb";
+    const a=document.createElement("a"); a.href="/_blob/"+id; a.target="_blank"; a.rel="noopener";
+    const img=document.createElement("img"); img.src="/_blob/"+id; img.alt="Ảnh CCCD"; img.loading="lazy";
+    img.onerror=()=>{ img.replaceWith(Object.assign(document.createElement("div"),{className:"hint",textContent:"Không tải được ảnh",style:"padding:30px 8px;text-align:center"})); };
+    a.appendChild(img); w.appendChild(a);
+    if(assets){ const del=document.createElement("button"); del.className="danger"; del.textContent="Xoá";
+      del.onclick=async ev=>{ ev.preventDefault();
+        if(!del.dataset.arm){ del.dataset.arm=1; del.textContent="Chắc chắn?"; setTimeout(()=>{ if(del.isConnected){ delete del.dataset.arm; del.textContent="Xoá"; } },3000); return; }
+        putInfo(c,openKey,{ids:(getInfo(c,openKey).ids||[]).filter(x=>x!==id)}); changed(c); fillDrawer();
+        try{ await assets.delete(id); }catch(e){} toast("Đã xoá ảnh"); };
+      w.appendChild(del); }
+    th.appendChild(w);
+  });
+  $("drUpload").hidden=!assets; $("drFile").disabled=!assets;
+  $("drUpNote").textContent = assets ? "Ảnh chỉ những người bạn chia sẻ trang mới xem được." : "Chỉ người có quyền sửa trang mới tải ảnh lên được.";
+}
+function closeDay(){ openKey=null; $("drawer").hidden=true; document.body.classList.remove("dr-open"); document.querySelectorAll(".d.sel").forEach(x=>x.classList.remove("sel")); }
+$("drClose").onclick=closeDay;
+document.addEventListener("keydown", e=>{ if(e.key==="Escape" && !$("drawer").hidden) closeDay(); });
+document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{ const c=car(); if(!c||!openKey) return;
+  if(b.dataset.st) c.marks[openKey]=b.dataset.st; else delete c.marks[openKey]; changed(c); fillDrawer(); });
+let infoTimer=null;
+function saveFields(){ const c=car(); if(!c||!openKey) return;
+  putInfo(c,openKey,{price:Number($("drPrice").value.replace(/\D/g,""))||0, name:$("drName").value.trim(), phone:$("drPhone").value.trim()});
+  clearTimeout(infoTimer); infoTimer=setTimeout(()=>changed(c), 500);
+}
+$("drPrice").addEventListener("input", e=>{ const d=e.target.value.replace(/\D/g,""); e.target.value=d? new Intl.NumberFormat("vi-VN").format(Number(d)):""; saveFields(); });
+$("drName").addEventListener("input", saveFields); $("drPhone").addEventListener("input", saveFields);
+$("drClear").onclick=()=>{ const c=car(); if(!c||!openKey) return; const b=$("drClear");
+  if(!b.dataset.arm){ b.dataset.arm=1; b.textContent="Bấm lần nữa để xoá giá, tên, SĐT, ảnh"; setTimeout(()=>{ delete b.dataset.arm; b.textContent="Xoá thông tin ngày này"; },3000); return; }
+  delete b.dataset.arm; b.textContent="Xoá thông tin ngày này";
+  const ids=getInfo(c,openKey).ids||[]; c.info=Object.assign({},c.info); delete c.info[openKey];
+  openDay(openKey); changed(c); if(assets) ids.forEach(id=>assets.delete(id).catch(()=>{})); toast("Đã xoá thông tin ngày");
+};
+$("drRun").onclick=()=>{ const c=car(); if(!c||!openKey) return;
+  if(c.marks[openKey]!=="go"){ toast("Ngày này chưa tích “Xe đi”"); return; }
+  const src=getInfo(c,openKey); const step=(k,dir)=>{ const [y,m,d]=k.split("-").map(Number); const t=new Date(y,m-1,d+dir); return key(t.getFullYear(),t.getMonth(),t.getDate()); };
+  let n=0; for(const dir of [-1,1]){ let k=step(openKey,dir); while(c.marks[k]==="go" && k>="2026-02-01"){
+    putInfo(c,k,{price:src.price, name:src.name, phone:src.phone, ids:(src.ids||[]).slice()}); n++; k=step(k,dir); } }
+  changed(c); toast(n? `Đã áp dụng cho ${n} ngày liền kề` : "Không có ngày đi liền kề");
+};
+async function shrink(file){
+  try{
+    const bmp=await createImageBitmap(file); const s=Math.min(1,1600/Math.max(bmp.width,bmp.height));
+    const cv=document.createElement("canvas"); cv.width=Math.round(bmp.width*s); cv.height=Math.round(bmp.height*s);
+    cv.getContext("2d").drawImage(bmp,0,0,cv.width,cv.height);
+    return await new Promise(r=>cv.toBlob(b=>r(b||file),"image/jpeg",0.85));
+  }catch(e){ return file; }
+}
+$("drFile").addEventListener("change", async e=>{
+  const c=car(); const k=openKey; const files=[...e.target.files]; e.target.value="";
+  if(!c||!k||!assets||!files.length) return;
+  $("drUpload").firstChild.nextSibling.textContent="Đang tải ảnh lên…";
+  for(const f of files){
+    try{ const blob=await shrink(f); const r=await assets.upload(blob);
+      putInfo(c,k,{ids:(getInfo(c,k).ids||[]).concat([r.id])}); changed(c); if(openKey===k) fillDrawer();
+    }catch(err){ toast(err&&err.code==="not_granted"?"Bạn chưa có quyền tải ảnh lên":"Tải ảnh lên không được: "+(err&&err.message||"lỗi không rõ")); }
+  }
+  $("drUpload").firstChild.nextSibling.textContent="+ Thêm ảnh CCCD (mặt trước / sau)";
+});
+
+/* Doanh thu từ giá xe các ngày đi */
+function revOf(c,y,m){
+  const p=(y==null)?null:ym(y,m); let s=0;
+  for(const [k,i] of Object.entries(c.info||{})){ if(c.marks[k]==="go" && (!p||k.startsWith(p))) s+=Number(i.price)||0; }
+  return s;
+}
+document.querySelectorAll(".brush button").forEach(b=>b.onclick=()=>{ brush=b.dataset.b; document.querySelectorAll(".brush button").forEach(x=>x.setAttribute("aria-pressed", x===b)); });
+
+/* ---------- Storage ---------- */
+function lsSave(){ try{ localStorage.setItem(LS, JSON.stringify({cars,currentId})); }catch(e){} }
+function lsLoad(){ try{ const v=JSON.parse(localStorage.getItem(LS)||"null"); if(v&&Array.isArray(v.cars)){cars=v.cars.map(c=>Object.assign({marks:{},expenses:[],info:{}},c)); currentId=v.currentId;} }catch(e){} }
+function changed(c){
+  if(c){ dirty.add(c.id); }
+  renderSummary(); renderMonths(); renderCars(); renderDash(); lsSave();
+  if(!db) return;
+  setSync("busy","Đang lưu…");
+  clearTimeout(saveTimer); saveTimer=setTimeout(flush, 700);
+}
+let flushing=false; const inflight=new Set();
+async function flush(){
+  if(flushing){ saveTimer=setTimeout(flush,400); return; }
+  flushing=true;
+  const ids=[...dirty]; dirty.clear(); ids.forEach(i=>inflight.add(i));
+  try{
+    for(const id of ids){
+      const c=cars.find(x=>x.id===id);
+      if(c) await db.collection("cars").doc(id).set({name:c.name, plate:c.plate, created:c.created||Date.now(), marks:c.marks, expenses:c.expenses||[], info:c.info||{}});
+      else await db.collection("cars").doc(id).delete();
+    }
+    setSync("ok","Đã lưu");
+  }catch(e){ ids.forEach(i=>dirty.add(i)); setSync("", "Lưu chưa được — thử lại sau"); saveTimer=setTimeout(flush,4000); }
+  setTimeout(()=>ids.forEach(i=>inflight.delete(i)), 3000);
+  flushing=false;
+}
+
+/* ---------- Car add / edit ---------- */
+$("addCarBtn").onclick=()=>{ $("addCarForm").hidden=false; $("carName").focus(); };
+$("cancelCar").onclick=()=>{ $("addCarForm").hidden=true; };
+$("saveCar").onclick=()=>{
+  const name=$("carName").value.trim(), plate=$("carPlate").value.trim();
+  if(!name && !plate){ toast("Nhập tên xe hoặc biển số"); return; }
+  const id="car"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  cars.push({id,name,plate,created:Date.now(),marks:{},expenses:[],info:{}}); currentId=id;
+  $("carName").value=""; $("carPlate").value=""; $("addCarForm").hidden=true;
+  renderAll(); changed(car()); toast("Đã thêm xe");
+};
+function closeEdit(){ $("carEdit").hidden=true; $("delConfirm").hidden=true; }
+$("carMenuBtn").onclick=()=>{ const c=car(); if(!c) return; $("editName").value=c.name; $("editPlate").value=c.plate; $("carEdit").hidden=false; };
+$("closeEdit").onclick=closeEdit;
+$("saveEdit").onclick=()=>{ const c=car(); c.name=$("editName").value.trim(); c.plate=$("editPlate").value.trim(); closeEdit(); renderAll(); changed(c); toast("Đã lưu thông tin xe"); };
+$("delCar").onclick=()=>{ $("delConfirm").hidden=false; };
+$("delNo").onclick=()=>{ $("delConfirm").hidden=true; };
+$("delYes").onclick=()=>{ const c=car(); cars=cars.filter(x=>x.id!==c.id); dirty.add(c.id); currentId=cars[0]?.id||null; closeEdit(); renderAll(); changed(null); if(db){clearTimeout(saveTimer);saveTimer=setTimeout(flush,100);} toast("Đã xoá xe"); };
+
+/* ---------- PDF ---------- */
+const fmtK=k=>k.split("-").reverse().join("/");
+const R="text-align:right";
+function carTitle(c){ return esc(c.name||"Xe")+(c.plate?" · "+esc(c.plate):""); }
+function legend(){ return `<div class="lg"><span><i style="background:#0f6e78"></i>Xe đi / đã đặt</span><span><i style="background:#f8e6cc;border:1px solid #b26a12"></i>Ở nhà</span><span><i style="border:1px dashed #9aa6ae"></i>Chưa đánh dấu</span></div>`; }
+function rentalTables(rows, title, total){
+  const out=[]; if(!rows.length) return out;
+  for(let i=0;i<rows.length;i+=20){ const part=rows.slice(i,i+20);
+    out.push(`<div class="blk"><h3>${title}${rows.length>20?` (${i/20+1}/${Math.ceil(rows.length/20)})`:""}</h3><table><thead><tr><th>Ngày</th><th style="${R}">Giá xe</th><th>Người thuê</th><th>SĐT</th></tr></thead><tbody>${
+      part.map(({k,i:f})=>`<tr><td>${fmtK(k)}${k>TODAY?" <span style='color:#5e6b75'>(đã đặt)</span>":""}</td><td style="${R}">${f.price?vnd(f.price):"—"}</td><td>${esc(f.name||"—")}</td><td>${esc(f.phone||"—")}</td></tr>`).join("")
+    }</tbody>${i+20>=rows.length?`<tfoot><tr><td>${rows.length} ngày đi</td><td style="${R}">${vnd(total)}</td><td colspan="2"></td></tr></tfoot>`:""}</table></div>`); }
+  return out;
+}
+function expenseTables(list, title, total){
+  const out=[]; if(!list.length) return out;
+  for(let i=0;i<list.length;i+=20){ const part=list.slice(i,i+20);
+    out.push(`<div class="blk"><h3>${title}${list.length>20?` (${i/20+1}/${Math.ceil(list.length/20)})`:""}</h3><table><thead><tr><th>Ngày</th><th>Hạng mục</th><th style="${R}">Số tiền</th><th>Ghi chú</th></tr></thead><tbody>${
+      part.map(e=>`<tr><td>${fmtK(String(e.date))}</td><td>${esc(e.cat||"Khác")}</td><td style="${R}">${vnd(e.amount)}</td><td>${esc(e.note||"")}</td></tr>`).join("")
+    }</tbody>${i+20>=list.length?`<tfoot><tr><td colspan="2">Tổng (${list.length} khoản)</td><td style="${R}">${vnd(total)}</td><td></td></tr></tfoot>`:""}</table></div>`); }
+  return out;
+}
+/* Một trang tổng hợp cả kỳ cho 1 xe: trả về {flow:[html khối toàn khổ], minis:[html lịch nhỏ]} */
+function summaryBlocks(c){
+  const s=stats(c), ms=monthList(); const last=ms[ms.length-1];
+  const head=`<div><div class="rh"><h2>Lịch xe ${carTitle(c)}</h2>
+    <p>Tổng hợp từ 01/02/2026 đến hết ${MONTHS[last.m].toLowerCase()}/${last.y} · Xuất ngày ${fmtK(TODAY)}</p></div>
+    <div class="rs"><div><b style="color:#0f6e78">${s.go}</b>ngày xe đi (đến hôm nay)</div><div><b>${s.fgo}</b>ngày đã đặt sắp tới</div><div><b style="color:#b26a12">${s.home}</b>ngày ở nhà</div>
+    <div><b>${s.none}</b>chưa đánh dấu</div><div><b>${s.go+s.home?Math.round(s.go/(s.go+s.home)*100):0}%</b>tỉ lệ xe chạy</div></div>
+    <div class="rs" style="padding-top:0"><div><b style="color:#0f6e78">${vnd(revOf(c))}</b>doanh thu (giá xe)</div><div><b>${vnd(costOf(c))}</b>chi phí (${(c.expenses||[]).length} khoản)</div><div><b>${vnd(revOf(c)-costOf(c))}</b>lãi sau chi phí</div></div>
+    <div class="blk"><h3>Tổng hợp theo tháng</h3><table><thead><tr><th>Tháng</th><th style="${R}">Ngày đi</th><th style="${R}">Ở nhà</th><th style="${R}">Chưa tích</th><th style="${R}">Doanh thu</th><th style="${R}">Chi phí</th><th style="${R}">Lãi</th></tr></thead><tbody>${
+      ms.map(({y,m})=>{const q=stats(c,y,m), rv=revOf(c,y,m), co=costOf(c,y,m); return `<tr><td>${MONTHS[m]}/${y}</td><td style="${R}">${q.all}</td><td style="${R}">${q.home}</td><td style="${R}">${q.none}</td><td style="${R}">${vnd(rv)}</td><td style="${R}">${vnd(co)}</td><td style="${R}">${vnd(rv-co)}</td></tr>`;}).join("")
+    }</tbody><tfoot><tr><td>Tổng</td><td style="${R}">${s.all}</td><td style="${R}">${s.home}</td><td style="${R}">${s.none}</td><td style="${R}">${vnd(revOf(c))}</td><td style="${R}">${vnd(costOf(c))}</td><td style="${R}">${vnd(revOf(c)-costOf(c))}</td></tr></tfoot></table></div>${legend()}</div>`;
+  const minis=ms.map(({y,m})=>{
+    const q=stats(c,y,m); const first=(new Date(y,m,1).getDay()+6)%7; const n=daysIn(y,m);
+    let cells=WD.map(w=>`<span class="w">${w}</span>`).join("")+"<span class='bl'></span>".repeat(first);
+    for(let d=1;d<=n;d++){ const k=key(y,m,d); const v=c.marks[k];
+      cells+= (k>TODAY && !v) ? `<span class="bl" style="color:#9aa6ae">${d}</span>` : `<span class="${v||"nx"}">${d}</span>`; }
+    return `<div class="rm"><h4>${MONTHS[m]}/${y}</h4><div class="ms">${q.all} đi · ${q.home} nhà · ${q.none} trống</div><div class="rg">${cells}</div></div>`;
+  });
+  const tail=[...rentalTables(rentalRows(c).reverse(),"Chi tiết lượt thuê",revOf(c)),
+    ...expenseTables((c.expenses||[]).slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))),"Chi tiết khoản chi",costOf(c))];
+  return {head, minis, tail};
+}
+/* Trang một tháng của một xe: lịch lớn có tên khách + giá trong từng ô */
+function monthBlocks(c,y,m){
+  const q=stats(c,y,m), rv=revOf(c,y,m), co=costOf(c,y,m), p=ym(y,m);
+  const first=(new Date(y,m,1).getDay()+6)%7, n=daysIn(y,m);
+  let cells=WD.map(w=>`<div class="bw">${w}</div>`).join("")+"<div class='bc bl'></div>".repeat(first);
+  for(let d=1;d<=n;d++){ const k=key(y,m,d), v=c.marks[k], i=getInfo(c,k);
+    cells+=`<div class="bc ${v||(k>TODAY?"fx":"nx")}"><span class="bd">${d}</span>${i.name?`<span class="bn">${esc(i.name)}</span>`:""}${i.price?`<span class="bp">${vnd(i.price)}</span>`:""}</div>`; }
+  const head=`<div><div class="rh"><h2>${MONTHS[m]}/${y} · ${carTitle(c)}</h2><p>Lịch xe tháng ${m+1}/${y} · Xuất ngày ${fmtK(TODAY)}</p></div>
+    <div class="rs"><div><b style="color:#0f6e78">${q.all}</b>ngày xe đi${q.fgo?` (${q.fgo} đã đặt)`:""}</div><div><b style="color:#b26a12">${q.home}</b>ngày ở nhà</div>${q.total?`<div><b>${q.none}</b>chưa đánh dấu</div>`:""}
+    <div><b style="color:#0f6e78">${vnd(rv)}</b>doanh thu</div><div><b>${vnd(co)}</b>chi phí</div><div><b>${vnd(rv-co)}</b>lãi</div></div>
+    <div class="blk"><div class="big">${cells}</div></div>${legend()}</div>`;
+  const rows=rentalRows(c).filter(r=>r.k.startsWith(p)).reverse();
+  const exs=(c.expenses||[]).filter(e=>String(e.date).startsWith(p)).sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+  return [head, ...rentalTables(rows,`Lượt thuê tháng ${m+1}/${y}`,rv), ...expenseTables(exs,`Khoản chi tháng ${m+1}/${y}`,co)];
+}
+function esc(t){ return String(t).replace(/[&<>"]/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch])); }
+let downloads=null;
+
+/* Bảng chọn xuất */
+function openExport(){
+  const c=car(); if(!c) return;
+  $("pxCar").innerHTML=cars.map(x=>`<option value="${x.id}">${esc(x.name||"Xe")}${x.plate?" · "+esc(x.plate):""}</option>`).join("")+(cars.length>1?`<option value="*">Tất cả xe (mỗi xe một phần)</option>`:"");
+  $("pxCar").value=c.id;
+  const ms=monthList(); const cur=ym(now.getFullYear(),now.getMonth());
+  $("pxRange").innerHTML=`<option value="sum">Tổng hợp cả kỳ</option><option value="each">Từng tháng – mỗi tháng một trang</option><optgroup label="Một tháng">`+
+    ms.slice().reverse().map(({y,m})=>`<option value="${ym(y,m)}">${MONTHS[m]}/${y}</option>`).join("")+`</optgroup>`;
+  $("pxRange").value=cur; $("exportPanel").hidden=false;
+}
+$("pdfBtn").onclick=()=>{ if($("exportPanel").hidden) openExport(); else $("exportPanel").hidden=true; };
+$("pxCancel").onclick=()=>{ $("exportPanel").hidden=true; };
+$("pxGo").onclick=async ()=>{
+  if(!window.html2canvas || !window.jspdf){ toast("Chưa tải xong công cụ PDF, thử lại sau vài giây"); return; }
+  const sel=$("pxCar").value, range=$("pxRange").value;
+  const list= sel==="*" ? cars.slice() : cars.filter(x=>x.id===sel); if(!list.length) return;
+  const btn=$("pxGo"); btn.disabled=true; btn.textContent="Đang tạo PDF…";
+  try{
+    await document.fonts.ready;
+    const {jsPDF}=window.jspdf; const pdf=new jsPDF({unit:"mm",format:"a4"});
+    const W=210, H=297, M=10, CW=W-2*M; let yPos=M, fresh=true;
+    const shot=html=>{ const r=$("report"); r.innerHTML=html; return html2canvas(r.firstElementChild,{scale:2,backgroundColor:"#ffffff",logging:false}); };
+    const newPage=()=>{ if(!fresh) pdf.addPage(); yPos=M; fresh=false; };
+    const place=(cv,x,w)=>{ const h=w*cv.height/cv.width;
+      if(h<=H-2*M){ if(yPos+h>H-M) newPage(); pdf.addImage(cv.toDataURL("image/jpeg",0.9),"JPEG",x,yPos,w,h); yPos+=h+4; fresh=false; return; }
+      // khối cao hơn một trang: cắt theo chiều dọc
+      const pxPerMm=cv.width/w; let off=0;
+      while(off<cv.height){ if(yPos>M+1) newPage(); const avail=(H-M-yPos)*pxPerMm; const part=Math.min(avail,cv.height-off);
+        const sub=document.createElement("canvas"); sub.width=cv.width; sub.height=Math.ceil(part); sub.getContext("2d").drawImage(cv,0,-off);
+        pdf.addImage(sub.toDataURL("image/jpeg",0.9),"JPEG",x,yPos,w,part/pxPerMm); yPos+=part/pxPerMm+4; fresh=false; off+=part; }
+    };
+    let pageCount=0;
+    for(const c of list){
+      if(range==="sum"){
+        newPage(); const b=summaryBlocks(c);
+        place(await shot(b.head),M,CW);
+        const cols=3,gap=5,cw=(CW-gap*(cols-1))/cols; let col=0,rowH=0;
+        for(const h of b.minis){ const cv=await shot(h); const hh=cw*cv.height/cv.width;
+          if(col===0 && yPos+hh>H-M) newPage();
+          pdf.addImage(cv.toDataURL("image/jpeg",0.9),"JPEG",M+col*(cw+gap),yPos,cw,hh); rowH=Math.max(rowH,hh); col++;
+          if(col===cols){ col=0; yPos+=rowH+gap; rowH=0; } }
+        if(col) yPos+=rowH+gap;
+        for(const h of b.tail) place(await shot(h),M,CW);
+      } else {
+        const months = range==="each" ? monthList() : monthList().filter(x=>ym(x.y,x.m)===range);
+        for(const {y,m} of months){ newPage(); pageCount++; for(const h of monthBlocks(c,y,m)) place(await shot(h),M,CW); }
+      }
+    }
+    const blob=pdf.output("blob");
+    const who= list.length>1 ? "tat-ca-xe" : (list[0].plate||list[0].name||"xe").replace(/[^\p{L}\p{N}\-.]+/gu,"_");
+    const what= range==="sum" ? "tong-hop" : range==="each" ? "tung-thang" : "thang-"+range;
+    if(downloads) await downloads.save({filename:`lich-xe-${who}-${what}.pdf`, data:blob}); else pdf.save(`lich-xe-${who}-${what}.pdf`);
+    toast("Đã xuất PDF"); $("exportPanel").hidden=true;
+  }catch(e){
+    if(e&&e.code==="declined") toast("Đã huỷ tải xuống");
+    else if(e&&e.code==="rate_limited") toast("Đang có một hộp thoại tải xuống, thử lại sau");
+    else toast("Không tạo được PDF: "+(e&&e.message||"lỗi không rõ"));
+  }finally{ btn.disabled=false; btn.textContent="Tạo PDF"; $("report").innerHTML=""; }
+};
+
+/* ---------- Boot ---------- */
+const end=`${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()}`;
+$("range").textContent=`Từ 01/02/2026 đến ${end}`;
+lsLoad(); if(!car()) currentId=cars[0]?.id||null; renderAll();
+
+(async ()=>{
+  const C=window.claude;
+  if(!C||!C.use){ setSync("","Lưu trên trình duyệt này"); return; }
+  C.use("assets").then(a=>{ assets=a; if(openKey) fillDrawer(); });
+  C.use("downloads").then(d=>{ downloads=d; if(!d) $("pdfBtn").title="Không tải được file ở chế độ xem này"; });
+  db = await C.use("db");
+  if(!db){ setSync("","Lưu trên trình duyệt này"); return; }
+  setSync("busy","Đang tải dữ liệu…");
+  let firstSnap=true;
+  db.collection("cars").onSnapshot(snap=>{
+    const remote=snap.docs.filter(d=>d.exists).map(d=>{const v=d.data()||{}; return {id:d.id,name:String(v.name||""),plate:String(v.plate||""),created:Number(v.created)||0,marks:Object.assign({}, v.marks||{}),expenses:Array.isArray(v.expenses)? v.expenses.map(e=>Object.assign({},e)) : [],info:JSON.parse(JSON.stringify(v.info||{}))};});
+    if(firstSnap && remote.length===0 && cars.length){ cars.forEach(c=>dirty.add(c.id)); flush(); firstSnap=false; return; } // đẩy dữ liệu cục bộ lên
+    firstSnap=false;
+    // giữ bản đang sửa chưa lưu
+    const keepLocal = id => dirty.has(id) || inflight.has(id) || (painting && id===currentId);
+    const merged=remote.map(r=> keepLocal(r.id) ? cars.find(c=>c.id===r.id) : r).filter(Boolean);
+    cars.forEach(c=>{ if(keepLocal(c.id) && !merged.find(x=>x.id===c.id)) merged.push(c); });
+    merged.sort((a,b)=>(a.created||0)-(b.created||0));
+    cars=merged; if(!car()) currentId=cars[0]?.id||null;
+    if(!painting) renderAll();
+    lsSave(); if(!dirty.size) setSync("ok","Đã đồng bộ");
+  }, err=>{ setSync("","Mất kết nối lưu trữ — đang lưu trên trình duyệt"); db=null; });
+})();
+})();
+</script>
+
+</html>
