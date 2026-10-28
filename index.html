@@ -192,6 +192,9 @@ tfoot td{font-weight:700;border-bottom:0;border-top:2px solid var(--fg)}
 .upload{border:1.5px dashed var(--line);border-radius:10px;padding:12px;text-align:center;color:var(--muted);cursor:pointer;display:block}
 .upload input{display:none}
 .privacy{font-size:12px;color:var(--muted)}
+.btnlike{display:inline-flex;align-items:center;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:8px;padding:7px 12px}
+.btnlike:hover{border-color:var(--muted)}
+.restore{display:grid;gap:8px;border:1px solid var(--home);background:var(--home-soft);border-radius:10px;padding:12px}
 .range2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .book{border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:10px;background:var(--bg)}
 .book-h{display:flex;justify-content:space-between;align-items:center}
@@ -358,6 +361,26 @@ tfoot td{font-weight:700;border-bottom:0;border-top:2px solid var(--fg)}
     <div class="panel" id="allCarsPanel" hidden>
       <h2>So sánh các xe</h2>
       <div class="tbl-wrap"><table id="carsTbl"></table></div>
+    </div>
+  </section>
+
+  <section class="panel backup" id="backupPanel">
+    <div class="ph"><h2>Sao lưu dữ liệu</h2><span class="hint" id="bkLast">Chưa sao lưu lần nào</span></div>
+    <p class="hint" style="margin:0">Lưu toàn bộ xe, lịch, lượt thuê, đặt trước và chi phí ra một file. Cất file vào Zalo, Drive hoặc email để khôi phục khi đổi máy hay lỡ xoá.</p>
+    <div class="row">
+      <button class="primary" id="bkSave">Sao lưu ra file</button>
+      <label class="btnlike" for="bkFile">Khôi phục từ file</label>
+      <input type="file" id="bkFile" accept=".json,application/json" hidden>
+    </div>
+    <div class="restore" id="bkConfirm" hidden>
+      <b id="bkInfo"></b>
+      <span class="hint">Chọn cách khôi phục:</span>
+      <div class="row">
+        <button class="primary" id="bkMerge">Gộp vào dữ liệu hiện có</button>
+        <button class="danger" id="bkReplace">Thay toàn bộ bằng file này</button>
+        <button class="ghost" id="bkCancel">Huỷ</button>
+      </div>
+      <span class="hint">Gộp: xe trùng trong file sẽ thay bản đang có, xe khác giữ nguyên. Thay toàn bộ: xoá dữ liệu hiện tại, chỉ còn dữ liệu trong file.</span>
     </div>
   </section>
 </div>
@@ -1062,6 +1085,54 @@ function monthBlocks(c,y,m){
 }
 function esc(t){ return String(t).replace(/[&<>"]/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch])); }
 let downloads=null;
+/* ---------- Sao lưu / khôi phục ---------- */
+function bkLastShow(){ let t=null; try{ t=localStorage.getItem(LS+"-bk"); }catch(e){}
+  if(!t){ $("bkLast").textContent="Chưa sao lưu lần nào trên máy này"; return; }
+  const d=new Date(Number(t)), days=Math.floor((Date.now()-d)/864e5);
+  $("bkLast").textContent=`Sao lưu lần cuối: ${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`+(days>=7?` · đã ${days} ngày, nên sao lưu lại`:""); }
+async function saveFile(name, text){
+  if(downloads){ await downloads.save({filename:name, data:text}); return; }
+  const blob=new Blob([text],{type:"application/json"});
+  try{ const f=new File([blob],name,{type:"application/json"}); if(navigator.canShare && navigator.canShare({files:[f]}) && /iPhone|iPad|Android/i.test(navigator.userAgent)){ await navigator.share({files:[f], title:name}); return; } }catch(e){ if(e&&e.name==="AbortError") throw {code:"declined"}; }
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1500);
+}
+$("bkSave").onclick=async ()=>{
+  if(!cars.length){ toast("Chưa có dữ liệu để sao lưu"); return; }
+  const now=new Date();
+  const data={app:"lich-xe-hixe", version:1, exportedAt:now.toISOString(), cars:cars.map(c=>({id:c.id,name:c.name,plate:c.plate,created:c.created||0,marks:c.marks||{},info:c.info||{},expenses:c.expenses||[]}))};
+  const name=`lich-xe-sao-luu-${key(now.getFullYear(),now.getMonth(),now.getDate())}.json`;
+  try{ await saveFile(name, JSON.stringify(data)); try{ localStorage.setItem(LS+"-bk", String(Date.now())); }catch(e){} bkLastShow();
+    const days=cars.reduce((a,c)=>a+Object.keys(c.marks||{}).length,0); toast(`Đã sao lưu ${cars.length} xe, ${days} ngày đã tích`);
+  }catch(e){ toast(e&&e.code==="declined"?"Đã huỷ sao lưu":"Không sao lưu được: "+(e&&e.message||"lỗi không rõ")); }
+};
+let bkData=null;
+$("bkFile").addEventListener("change", async e=>{
+  const f=e.target.files[0]; e.target.value=""; if(!f) return;
+  try{
+    const d=JSON.parse(await f.text());
+    if(!d || d.app!=="lich-xe-hixe" || !Array.isArray(d.cars)) throw new Error("File này không phải file sao lưu của Lịch Xe");
+    d.cars=d.cars.filter(c=>c&&typeof c.id==="string").map(c=>({id:c.id, name:String(c.name||""), plate:String(c.plate||""), created:Number(c.created)||0,
+      marks:(c.marks&&typeof c.marks==="object")?c.marks:{}, info:(c.info&&typeof c.info==="object")?c.info:{}, expenses:Array.isArray(c.expenses)?c.expenses:[]}));
+    if(!d.cars.length) throw new Error("File sao lưu không có xe nào");
+    bkData=d; const when=d.exportedAt? new Date(d.exportedAt) : null;
+    $("bkInfo").textContent=`File có ${d.cars.length} xe (${d.cars.map(c=>c.plate||c.name||"Xe").join(", ")})`+(when?`, sao lưu lúc ${pad(when.getDate())}/${pad(when.getMonth()+1)}/${when.getFullYear()} ${pad(when.getHours())}:${pad(when.getMinutes())}`:"");
+    $("bkConfirm").hidden=false; $("bkConfirm").scrollIntoView({block:"nearest"});
+  }catch(err){ toast("Không đọc được file: "+(err&&err.message||"lỗi không rõ")); }
+});
+function applyRestore(replace){
+  if(!bkData) return;
+  const incoming=bkData.cars; const before=cars.map(c=>c.id);
+  if(replace){ cars=incoming; before.filter(id=>!cars.find(c=>c.id===id)).forEach(id=>dirty.add(id)); }
+  else { const map=new Map(cars.map(c=>[c.id,c])); incoming.forEach(c=>map.set(c.id,c)); cars=[...map.values()].sort((a,b)=>(a.created||0)-(b.created||0)); }
+  incoming.forEach(c=>dirty.add(c.id));
+  currentId = incoming[0].id; bkData=null; $("bkConfirm").hidden=true; closeDay();
+  renderAll(); lsSave(); if(db){ setSync("busy","Đang lưu…"); clearTimeout(saveTimer); saveTimer=setTimeout(flush,200); }
+  toast(replace? `Đã khôi phục ${incoming.length} xe từ file` : `Đã gộp ${incoming.length} xe từ file`);
+}
+$("bkMerge").onclick=()=>applyRestore(false);
+$("bkReplace").onclick=()=>{ const b=$("bkReplace"); if(!b.dataset.arm){ b.dataset.arm=1; b.textContent="Bấm lần nữa để thay toàn bộ"; setTimeout(()=>{ delete b.dataset.arm; b.textContent="Thay toàn bộ bằng file này"; },3500); return; } delete b.dataset.arm; b.textContent="Thay toàn bộ bằng file này"; applyRestore(true); };
+$("bkCancel").onclick=()=>{ bkData=null; $("bkConfirm").hidden=true; };
+bkLastShow();
 
 /* Bảng chọn xuất */
 function openExport(){
