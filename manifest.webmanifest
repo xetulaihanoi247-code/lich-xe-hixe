@@ -1,0 +1,17 @@
+{
+  "name": "Lịch Xe Hixe",
+  "short_name": "Lịch Xe",
+  "description": "Tích ngày xe đi, lượt thuê, đặt xe trước, chi phí và xuất PDF.",
+  "lang": "vi",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f3f5f6",
+  "theme_color": "#0f6e78",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}

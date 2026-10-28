@@ -3,6 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0f6e78">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Lịch Xe">
 <title>Lịch Xe Hixe</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -55,6 +63,9 @@ input{font:inherit;color:var(--fg);background:var(--surface);border:1px solid va
 .brush button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
 .sw.go{background:var(--go)} .sw.home{background:var(--home)} .sw.clear{border:1.5px dashed var(--muted)}
 .spacer{flex:1}
+#lockBtn[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+body.locked .brush{opacity:.4;pointer-events:none}
+body.painting{overscroll-behavior:none}
 .hint{font-size:12px;color:var(--muted)}
 .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
 .stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
@@ -68,7 +79,7 @@ input{font:inherit;color:var(--fg);background:var(--surface);border:1px solid va
 .mhead h3{margin:0;font-size:15px;white-space:nowrap}
 .mstat{font-family:var(--f-mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .mstat .g{color:var(--go)} .mstat .h{color:var(--home)}
-.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;user-select:none;-webkit-user-select:none;touch-action:none}
+.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;user-select:none;-webkit-user-select:none;touch-action:pan-y;-webkit-touch-callout:none}
 .wd{font-size:10px;text-align:center;color:var(--muted);font-weight:600;letter-spacing:.04em}
 .d{aspect-ratio:1/1;max-width:100%;border-radius:7px;border:1px solid var(--line);background:transparent;display:flex;align-items:center;justify-content:center;font-family:var(--f-mono);font-size:13px;font-variant-numeric:tabular-nums;padding:0;color:var(--fg)}
 .d.go{background:var(--go);border-color:var(--go);color:var(--surface)}
@@ -237,9 +248,10 @@ tfoot td{font-weight:700;border-bottom:0;border-top:2px solid var(--fg)}
         <button data-b="home" aria-pressed="false"><span class="sw home"></span>Ở nhà</button>
         <button data-b="clear" aria-pressed="false"><span class="sw clear"></span>Xoá</button>
       </div>
-      <span class="hint" data-cal>Chạm 1 lần để đánh dấu và mở ô điền giá, người thuê. Kéo qua nhiều ngày để tạo lượt thuê nhiều ngày. Bỏ chọn: chạm nhanh 2 lần vào 1 ngày, hoặc kéo từ một ngày đã tô qua các ngày cần bỏ.</span>
+      <span class="hint" data-cal>Chạm 1 lần để đánh dấu ngày. Tô nhiều ngày: trên máy tính bấm và kéo; trên điện thoại giữ khoảng nửa giây rồi kéo (vuốt bình thường chỉ cuộn trang). Bỏ chọn: chạm nhanh 2 lần, hoặc kéo từ ngày đã tô.</span>
       <span class="hint" data-dash hidden>Số ngày lấy từ lịch đã tích. Thêm khoản chi ở bên dưới.</span>
       <span class="spacer"></span>
+      <button id="lockBtn" aria-pressed="false" title="Khoá để chạm vào lịch không làm thay đổi ngày">Khoá lịch</button>
       <button id="carMenuBtn" class="ghost">Sửa / xoá xe</button>
       <button class="primary" id="pdfBtn">Xuất PDF</button>
     </div>
@@ -629,9 +641,38 @@ function applyTo(btn){
   if(paintVal===null) delete c.marks[k]; else c.marks[k]=paintVal;
   setCell(btn,paintVal);
 }
+/* Điện thoại: chạm nhẹ = 1 ngày; vuốt = cuộn trang (không tô); giữ ~0,4 giây rồi kéo = tô nhiều ngày.
+   Máy tính (chuột): bấm và kéo như cũ. */
+let locked=false; try{ locked=localStorage.getItem(LS+"-lock")==="1"; }catch(e){}
+function setLock(v){ locked=v; $("lockBtn").setAttribute("aria-pressed", v); $("lockBtn").textContent = v ? "Đã khoá lịch" : "Khoá lịch";
+  document.body.classList.toggle("locked", v); try{ localStorage.setItem(LS+"-lock", v?"1":"0"); }catch(e){} }
+$("lockBtn").onclick=()=>{ setLock(!locked); toast(locked? "Đã khoá: chạm vào ngày chỉ để xem, không đổi lịch" : "Đã mở khoá: chạm để đánh dấu ngày"); };
+setLock(locked);
+let pend=null;
+function tapDay(btn){
+  const c=car(); if(!c) return;
+  if(locked){ const k=btn.dataset.k; if(c.marks[k]||hasInfo(c,k)) openDay(k); else toast("Lịch đang khoá. Bấm “Đã khoá lịch” để mở."); return; }
+  beginPaint(btn); endPaint();
+}
 $("months").addEventListener("pointerdown", e=>{
   const btn=e.target.closest(".d"); if(!btn||btn.disabled) return;
-  e.preventDefault(); const c=car(); const cur=c.marks[btn.dataset.k];
+  if(e.pointerType==="mouse"){ e.preventDefault(); if(locked){ tapDay(btn); return; } beginPaint(btn); return; }
+  if(pend) clearTimeout(pend.timer);
+  pend={btn, x:e.clientX, y:e.clientY, timer: locked? null : setTimeout(()=>{
+    if(!pend) return; const b=pend.btn; pend=null;
+    try{ navigator.vibrate && navigator.vibrate(15); }catch(err){}
+    document.body.classList.add("painting"); lastTap=null; beginPaint(b); toast("Kéo để tô nhiều ngày, thả tay để xong");
+  }, 400)};
+});
+window.addEventListener("pointermove", e=>{
+  if(pend && Math.hypot(e.clientX-pend.x, e.clientY-pend.y)>8){ clearTimeout(pend.timer); pend=null; }
+}, {passive:true});
+// Đang tô thì chặn cuộn trang
+document.addEventListener("touchmove", e=>{ if(painting && e.cancelable) e.preventDefault(); }, {passive:false});
+window.addEventListener("pointerup", e=>{ if(pend){ clearTimeout(pend.timer); const b=pend.btn; pend=null; tapDay(b); } });
+window.addEventListener("pointercancel", ()=>{ if(pend){ clearTimeout(pend.timer); pend=null; } });
+function beginPaint(btn){
+  const c=car(); if(!c) return; const cur=c.marks[btn.dataset.k];
   // Chạm 2 lần nhanh vào cùng một ô = bỏ chọn
   const tNow=Date.now();
   if(lastTap && lastTap.k===btn.dataset.k && tNow-lastTap.t<450){
@@ -641,13 +682,13 @@ $("months").addEventListener("pointerdown", e=>{
   paintVal = brush==="clear" ? null : brush;
   startSame = brush!=="clear" && cur===brush; eraseMode=false; undoBuf={};
   firstCur = cur; painting=true; touched=new Set(); applyTo(btn);
-});
+}
 let firstCur, lastTap=null;
 window.addEventListener("pointermove", e=>{
   if(!painting) return;
   const el=document.elementFromPoint(e.clientX,e.clientY); const btn=el&&el.closest&&el.closest(".d"); if(btn) applyTo(btn);
 });
-function endPaint(){ if(!painting) return; painting=false;
+function endPaint(){ document.body.classList.remove("painting"); if(!painting) return; painting=false;
   const c=car();
   const one = touched.size===1 ? [...touched][0] : null;
   lastTap = one ? {k:one, t:Date.now()} : null;
@@ -1077,4 +1118,7 @@ lsLoad(); if(!car()) currentId=cars[0]?.id||null; renderAll();
 })();
 </script>
 
+<script>
+if("serviceWorker" in navigator){ window.addEventListener("load",()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); }); }
+</script>
 </html>
