@@ -123,6 +123,7 @@ body.painting{overscroll-behavior:none}
   .spacer{display:none}
   #lockBtn,#carMenuBtn,#pdfBtn{flex:1 1 0;min-width:0;min-height:40px;padding:6px 4px;font-size:13px;display:inline-flex;align-items:center;justify-content:center;text-align:center;white-space:normal}
   #lockBtn{gap:4px}
+  .row>.hint{flex:1 1 100%}
   #exportPanel .form{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center}
   #exportPanel .form .label{grid-column:1/-1}
   #exportPanel .form button{grid-column:span 1}
@@ -313,8 +314,8 @@ tfoot td{font-weight:700;border-bottom:0;border-top:2px solid var(--fg)}
     </div>
     <div class="row" id="carEdit" hidden>
       <div class="form" style="flex:1">
-        <input id="editName" aria-label="Sửa tên xe">
-        <input id="editPlate" aria-label="Sửa biển số">
+        <input id="editName" aria-label="Sửa tên xe" placeholder="Tên xe (vd: Mazda3)">
+        <input id="editPlate" aria-label="Sửa biển số" placeholder="Biển số">
         <button class="primary" id="saveEdit">Lưu</button>
         <button class="danger" id="delCar">Xoá xe này</button>
         <button class="ghost" id="closeEdit">Đóng</button>
