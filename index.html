@@ -34,9 +34,13 @@
   --accent:#4cc3cf; --danger:#f2867e; color-scheme:dark}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{overflow-x:hidden;max-width:100%}
 body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.45}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
-.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px;display:grid;gap:18px}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px;display:grid;grid-template-columns:minmax(0,1fr);gap:18px}
+.wrap>*,.bar>*,.row>*,.panel>*{min-width:0}
+button{max-width:100%}
 header.top{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;justify-content:space-between}
 h1{font-size:24px;margin:0;font-weight:700;letter-spacing:-.01em;text-wrap:balance}
 .sub{color:var(--muted);margin:2px 0 0}
@@ -97,7 +101,38 @@ body.painting{overscroll-behavior:none}
 .confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px}
 .toast .undo{margin-left:10px;padding:3px 10px;border-radius:999px;border:1px solid var(--bg);background:transparent;color:var(--bg);font-weight:600}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:999px;font-size:13px;z-index:20}
-@media (max-width:520px){.months{grid-template-columns:1fr} h1{font-size:20px}}
+.only-narrow{display:none}
+@media (max-width:520px){
+  .months{grid-template-columns:1fr} h1{font-size:20px}
+  .only-wide{display:none} .only-narrow{display:inline}
+  .wrap{padding-block:12px 40px;gap:12px}
+  header.top{align-items:center;gap:8px}
+  header.top>div:first-child{flex:1 1 100%}
+  .sub{font-size:12px}
+  .tabs button{padding:6px 14px}
+  .sync{font-size:11px}
+  .bar{position:static;padding:10px;gap:8px}
+  .row{gap:6px}
+  .row .label[data-cal]{display:none}
+  .brush{width:100%;justify-content:space-between}
+  .brush button{flex:1;justify-content:center;padding:7px 6px}
+  .spacer{display:none}
+  #lockBtn,#carMenuBtn,#pdfBtn{flex:1 1 0;padding:8px 6px;font-size:13px;white-space:nowrap}
+  #exportPanel .form{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center}
+  #exportPanel .form .label{grid-column:1/-1}
+  #exportPanel .form button{grid-column:span 1}
+  .sel{width:100%}
+  .summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .stat{padding:8px 10px}
+  .stat b{font-size:22px}
+  .stat.rev b,.stat.cost b{font-size:16px!important}
+  .month{padding:10px}
+  .grid{gap:3px}
+  .d{font-size:12px;border-radius:6px}
+  .upitem{grid-template-columns:minmax(0,1fr) auto}
+  .upitem .when{grid-column:1/-1}
+  .upitem .meta{grid-column:1/-1}
+}
 @media (prefers-reduced-motion:no-preference){.d{transition:background .12s,border-color .12s}}
 
 /* Tabs + dashboard */
@@ -248,7 +283,8 @@ tfoot td{font-weight:700;border-bottom:0;border-top:2px solid var(--fg)}
         <button data-b="home" aria-pressed="false"><span class="sw home"></span>Ở nhà</button>
         <button data-b="clear" aria-pressed="false"><span class="sw clear"></span>Xoá</button>
       </div>
-      <span class="hint" data-cal>Chạm 1 lần để đánh dấu ngày. Tô nhiều ngày: trên máy tính bấm và kéo; trên điện thoại giữ khoảng nửa giây rồi kéo (vuốt bình thường chỉ cuộn trang). Bỏ chọn: chạm nhanh 2 lần, hoặc kéo từ ngày đã tô.</span>
+      <span class="hint only-narrow" data-cal>Chạm: đánh dấu 1 ngày · Giữ rồi kéo: tô nhiều ngày · Chạm 2 lần: bỏ chọn</span>
+      <span class="hint only-wide" data-cal>Chạm 1 lần để đánh dấu ngày. Tô nhiều ngày: trên máy tính bấm và kéo; trên điện thoại giữ khoảng nửa giây rồi kéo (vuốt bình thường chỉ cuộn trang). Bỏ chọn: chạm nhanh 2 lần, hoặc kéo từ ngày đã tô.</span>
       <span class="hint" data-dash hidden>Số ngày lấy từ lịch đã tích. Thêm khoản chi ở bên dưới.</span>
       <span class="spacer"></span>
       <button id="lockBtn" aria-pressed="false" title="Khoá để chạm vào lịch không làm thay đổi ngày">Khoá lịch</button>
